@@ -103,6 +103,9 @@ public class Controller implements Initializable {
                         }
                     }
                     // цикл работы
+                    //Поясните пожалуйста, зачем нам нужен этот цикл.
+                    // Мы можем убрать break из цикла с аутентицикацией,
+                    // а этот цикл вообще удалить, и работать будет так же
                     while (authenticated) {
                             String str = in.readUTF();
 
