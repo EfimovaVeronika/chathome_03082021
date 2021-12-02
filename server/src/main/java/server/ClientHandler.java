@@ -30,6 +30,7 @@ public class ClientHandler {
 
                     // цикл аутентификации
                     while (true) {
+
                         String str = in.readUTF();
 
                         if (str.equals("/end")) {
@@ -44,7 +45,7 @@ public class ClientHandler {
                             login = token[1];
                             if (nickname != null) {
                                 if (!server.isLoginAuthenticated(login)) {
-                                    sendMsg("/authok " + nickname);
+                                    sendMsg("/authok " + nickname + " " + login);
                                     server.subscribe(this);
                                     authenticated = true;
                                     socket.setSoTimeout(0);
@@ -56,6 +57,9 @@ public class ClientHandler {
                                 sendMsg("Неверный логин / пароль");
                             }
                         }
+
+
+
 
                         if (str.startsWith("/reg ")) {
                             String[] token = str.split("\\s+");
@@ -77,6 +81,27 @@ public class ClientHandler {
                         String str = in.readUTF();
 
                         if (str.startsWith("/")) {
+
+                            if (str.startsWith("/rename ")) {
+                                String[] token = str.split("\\s+");
+                                if (token.length < 2) {
+                                    continue;
+                                }
+
+                                boolean renameOk = server.getAuthService().
+                                        renameNickName(nickname, token[1]);
+                                if (renameOk) {
+                                    sendMsg("/renameok");
+                                    sendMsg("Пользователь" + nickname + "cменил(а) никнейм на " + token[1]);
+                                    nickname = token[1];
+                                    server.broadcastClientList();
+
+
+                                } else {
+                                    sendMsg("/renameno");
+                                }
+                            }
+
                             if (str.equals("/end")) {
                                 sendMsg("/end");
                                 System.out.println("Client disconnected");

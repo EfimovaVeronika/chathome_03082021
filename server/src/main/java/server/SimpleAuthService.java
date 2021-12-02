@@ -29,6 +29,7 @@ public class SimpleAuthService implements AuthService {
         }
     }
 
+
     @Override
     public String getNicknameByLoginAndPassword(String login, String password) {
 
@@ -47,6 +48,19 @@ public class SimpleAuthService implements AuthService {
 
     }
 
+    @Override
+    public boolean renameNickName (String OldNickname,String NewNickname) {
+        try {
+            String st = "update users set nickname = '"  + NewNickname + "' where nickname = '" + OldNickname +"'";
+            PreparedStatement preparedStatement = connection.prepareStatement(st);
+            preparedStatement.executeUpdate();
+            return true;
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return false;
+    }
 
     @Override
     public boolean registration(String login, String password, String nickname) {
