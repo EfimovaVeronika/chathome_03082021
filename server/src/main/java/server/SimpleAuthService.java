@@ -1,9 +1,12 @@
 package server;
 
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleAuthService implements AuthService {
+    private Connection connection;
+
     private class UserData {
         String login;
         String password;
@@ -19,23 +22,64 @@ public class SimpleAuthService implements AuthService {
     private List<UserData> users;
 
     public SimpleAuthService() {
-        this.users = new ArrayList<>();
-        users.add(new UserData("qwe", "qwe", "qwe"));
-        users.add(new UserData("asd", "asd", "asd"));
-        users.add(new UserData("zxc", "zxc", "zxc"));
-        for (int i = 1; i < 10; i++) {
-            users.add(new UserData("login" + i, "pass" + i, "nick" + i));
+        try {
+            connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/homeChatDb", "postgres", "postgres");
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
         }
     }
+
 
     @Override
     public String getNicknameByLoginAndPassword(String login, String password) {
-        for (UserData u : users) {
-            if (u.login.equals(login) && u.password.equals(password)) {
-                return u.nickname;
-            }
-        }
 
+        try {
+            String st = "select nickname from users where (login ILIKE'" + login.toLowerCase() +
+                    "') and password = '" + password + "'";
+            PreparedStatement preparedStatement = connection.prepareStatement(st);
+           ResultSet resultSet =  preparedStatement.executeQuery();
+           resultSet.next();
+               return resultSet.getString("nickname");
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
         return null;
+
+    }
+
+    @Override
+    public boolean renameNickName (String OldNickname,String NewNickname) {
+        try {
+            String st = "update users set nickname = '"  + NewNickname + "' where nickname = '" + OldNickname +"'";
+            PreparedStatement preparedStatement = connection.prepareStatement(st);
+            preparedStatement.executeUpdate();
+            return true;
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean registration(String login, String password, String nickname) {
+
+        try {
+           String st = "insert into users (login, password, nickname) values ('" + login.toLowerCase() + "', '" + password + "', '" + nickname + "')";
+           PreparedStatement preparedStatement = connection.prepareStatement(st);
+           preparedStatement.executeUpdate();
+               return true;
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return false;
     }
 }
+
+
+
+
+
+

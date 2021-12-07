@@ -4,22 +4,33 @@ import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
+import org.apache.commons.io.input.ReversedLinesFileReader;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
+    @FXML
+    private ListView<String> clientList;
     @FXML
     private TextArea textArea;
     @FXML
@@ -41,7 +52,19 @@ public class Controller implements Initializable {
 
     private boolean authenticated;
     private String nickname;
+    private String login;
     private Stage stage;
+    private Stage regStage;
+    private Stage renameStage;
+    private RegController regController;
+    private RenameController renameController;
+    private File history;
+    private PrintWriter writer;
+    private String tempNickName;
+
+    public void setTempNickName(String tempNickName) {
+        this.tempNickName = tempNickName;
+    }
 
     public void setAuthenticated(boolean authenticated) {
         this.authenticated = authenticated;
@@ -49,6 +72,8 @@ public class Controller implements Initializable {
         authPanel.setManaged(!authenticated);
         msgPanel.setVisible(authenticated);
         msgPanel.setManaged(authenticated);
+        clientList.setVisible(authenticated);
+        clientList.setManaged(authenticated);
 
         if (!authenticated) {
             nickname = "";
@@ -96,23 +121,69 @@ public class Controller implements Initializable {
                             if (str.startsWith("/authok")) {
                                 nickname = str.split("\\s")[1];
                                 setAuthenticated(true);
+                                login = str.split("\\s")[2];
+                                history = new File("history_" + login + ".txt");
+                                if (!history.exists()) {
+                                    history.createNewFile();
+                                } else {
+                                    ReversedLinesFileReader reader = new ReversedLinesFileReader(history, StandardCharsets.UTF_8);
+                                    List<String> historyLastMessagesList = new ArrayList<>();
+                                    String line = "";
+                                    while ((line = reader.readLine()) != null && historyLastMessagesList.size() < 200) {
+                                        historyLastMessagesList.add(line);
+                                    }
+                                    for (int i = historyLastMessagesList.size() - 1; i >= 0; i--) {
+                                        textArea.appendText(historyLastMessagesList.get(i) + "\n");
+                                    }
+                                }
+
+                                writer = new PrintWriter(new FileOutputStream(history, true), true);
                                 break;
                             }
+                            if (str.equals("/regok")) {
+                                regController.regResult("Регистрация прошла успешно");
+                            }
+                            if (str.equals("/regno")) {
+                                regController.regResult("Логин или никнейм уже заняты");
+                            }
+
+
+
                         } else {
                             textArea.appendText(str + "\n");
                         }
                     }
                     // цикл работы
-                    //Поясните пожалуйста, зачем нам нужен этот цикл.
-                    // Мы можем убрать break из цикла с аутентицикацией,
-                    // а этот цикл вообще удалить, и работать будет так же
                     while (authenticated) {
-                            String str = in.readUTF();
+                        String str = in.readUTF();
+                        if (str.startsWith("/")) {
+
+                            if (str.equals("/renameok")) {
+                                renameController.renameResult("Смена никнейма прошла успешно");
+                                setTitle(tempNickName);
+                            }
+                            if (str.equals("/renameno")) {
+                                renameController.renameResult("Не удалось изменить никнейм");
+                            }
 
                             if (str.equals("/end")) {
+                                writer.close();
                                 break;
                             }
+                            if (str.startsWith("/clientlist ")) {
+                                String[] token = str.split("\\s+");
+                                Platform.runLater(() -> {
+                                    clientList.getItems().clear();
+                                    for (int i = 1; i < token.length; i++) {
+                                        clientList.getItems().add(token[i]);
+                                    }
+                                });
+                            }
+                        } else {
                             textArea.appendText(str + "\n");
+                            writer.println(str + "\n");
+
+                        }
                     }
 
                 } catch (IOException e) {
@@ -144,6 +215,7 @@ public class Controller implements Initializable {
         }
     }
 
+
     public void tryToAuth(ActionEvent actionEvent) {
         if (socket == null || socket.isClosed()) {
             connect();
@@ -169,5 +241,88 @@ public class Controller implements Initializable {
                 stage.setTitle("Home Chat");
             }
         });
+    }
+
+    public void clientListClick(MouseEvent mouseEvent) {
+        String receiver = clientList.getSelectionModel().getSelectedItem();
+        textField.setText(String.format("/w %s ", receiver));
+    }
+
+    private void createRegWindow() {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/reg.fxml"));
+            Parent root = fxmlLoader.load();
+            regStage = new Stage();
+            regStage.setTitle("Home Chat registration");
+            regStage.setScene(new Scene(root, 600, 400));
+            regController = fxmlLoader.getController();
+            regController.setController(this);
+
+            regStage.initStyle(StageStyle.UTILITY);
+            regStage.initModality(Modality.APPLICATION_MODAL);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void showRegWindow(ActionEvent actionEvent) {
+        if (regStage == null) {
+            createRegWindow();
+        }
+        regStage.show();
+    }
+
+    private void createRenameWindow() {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/rename.fxml"));
+            Parent root = fxmlLoader.load();
+            renameStage = new Stage();
+            renameStage.setTitle("Rename Nick Name Window");
+            renameStage.setScene(new Scene(root, 600, 400));
+            renameController = fxmlLoader.getController();
+            renameController.setController(this);
+
+            renameStage.initStyle(StageStyle.UTILITY);
+            renameStage.initModality(Modality.APPLICATION_MODAL);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void showRenameNickNameWindow(ActionEvent actionEvent) {
+        if (renameStage == null) {
+            createRenameWindow();
+        }
+        renameStage.show();
+    }
+
+    public void registration(String login, String password, String nickname) {
+        String msg = String.format("/reg %s %s %s", login, password, nickname);
+
+        if (socket == null || socket.isClosed()) {
+            connect();
+        }
+
+        try {
+            out.writeUTF(msg);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void renameNickName(String nickname) {
+        String msg = String.format("/rename %s", nickname);
+
+        if (socket == null || socket.isClosed()) {
+            connect();
+        }
+
+        try {
+            out.writeUTF(msg);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }
