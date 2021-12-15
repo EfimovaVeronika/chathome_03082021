@@ -1,5 +1,9 @@
 package server;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -11,6 +15,8 @@ public class ClientHandler implements Runnable {
     Server server;
     DataInputStream in;
     DataOutputStream out;
+
+    private static final Logger logger = LogManager.getLogger(ClientHandler.class);
 
     private boolean authenticated;
     private String nickname;
@@ -25,6 +31,7 @@ public class ClientHandler implements Runnable {
             out = new DataOutputStream(socket.getOutputStream());
         } catch (IOException e) {
             e.printStackTrace();
+            logger.error("Ошибка сокета");
         }
     }
 
@@ -40,7 +47,7 @@ public class ClientHandler implements Runnable {
 
                 if (str.equals("/end")) {
                     sendMsg("/end");
-                    System.out.println("Client disconnected");
+                    logger.info("Client disconnected");
                     break;
                 }
                 if (str.startsWith("/auth ")) {
@@ -56,9 +63,11 @@ public class ClientHandler implements Runnable {
                             socket.setSoTimeout(0);
                             break;
                         } else {
+                            logger.info("С этим логином уже вошли");
                             sendMsg("С этим логином уже вошли");
                         }
                     } else {
+                        logger.info("Неверный логин / пароль");
                         sendMsg("Неверный логин / пароль");
                     }
                 }
@@ -97,6 +106,7 @@ public class ClientHandler implements Runnable {
                                 renameNickName(nickname, token[1]);
                         if (renameOk) {
                             sendMsg("/renameok");
+                            logger.info("Пользователь {} cменил(а) никнейм на {}", nickname, token[1]);
                             sendMsg("Пользователь" + nickname + "cменил(а) никнейм на " + token[1]);
                             nickname = token[1];
                             server.broadcastClientList();
@@ -109,7 +119,7 @@ public class ClientHandler implements Runnable {
 
                     if (str.equals("/end")) {
                         sendMsg("/end");
-                        System.out.println("Client disconnected");
+                        logger.info("Client disconnected");
                         break;
                     }
 
@@ -126,15 +136,17 @@ public class ClientHandler implements Runnable {
             }
         } catch (SocketTimeoutException e) {
             sendMsg("/end");
-            System.out.println("Client disconnected");
+            logger.info("Client disconnected");
         } catch (IOException e) {
             e.printStackTrace();
+            logger.error("Ошибка сокета");
         } finally {
             server.unsubscribe(this);
             try {
                 socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
+                logger.error("Ошибка сокета");
             }
         }
     }
@@ -144,6 +156,7 @@ public class ClientHandler implements Runnable {
             out.writeUTF(msg);
         } catch (IOException e) {
             e.printStackTrace();
+            logger.error("Ошибка сокета");
         }
     }
 

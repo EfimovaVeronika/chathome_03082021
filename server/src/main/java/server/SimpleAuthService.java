@@ -1,11 +1,15 @@
 package server;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleAuthService implements AuthService {
     private Connection connection;
+    private static final Logger logger = LogManager.getLogger(SimpleAuthService.class);
 
     private class UserData {
         String login;
@@ -26,6 +30,7 @@ public class SimpleAuthService implements AuthService {
             connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/homeChatDb", "postgres", "postgres");
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+            logger.error("Ошибка базы данных");
         }
     }
 
@@ -43,6 +48,7 @@ public class SimpleAuthService implements AuthService {
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+            logger.error("Ошибка базы данных");
         }
         return null;
 
@@ -58,6 +64,7 @@ public class SimpleAuthService implements AuthService {
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+            logger.error("Ошибка базы данных");
         }
         return false;
     }
@@ -73,6 +80,7 @@ public class SimpleAuthService implements AuthService {
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+            logger.error("Ошибка базы данных");
         }
         return false;
     }
